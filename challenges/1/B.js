@@ -1,8 +1,9 @@
-const { parse, sum, mapItems } = require('../../utils');
+const { map } = require('rxjs/operators');
+const { parse, sum } = require('../../operators');
 
 module.exports = [
   parse(),
-  mapItems((val) => {
+  map((val) => {
     let mass = val,
       sum = 0;
     do {

@@ -7,12 +7,19 @@ function isDirectory(source) {
 }
 
 function getDirectories(source) {
-  return fs.readdirSync(source).filter((name) => isDirectory(path.join(source, name)));
+  return fs
+    .readdirSync(source)
+    .filter((name) => isDirectory(path.join(source, name)));
 }
 
 module.exports = {
   loadData(task) {
-    const dataPath = path.join(__dirname, 'challenges', task.toString(), 'input.txt');
+    const dataPath = path.join(
+      __dirname,
+      'challenges',
+      task.toString(),
+      'input.txt',
+    );
     return fs.readFileSync(dataPath, 'utf-8');
   },
 
@@ -24,16 +31,26 @@ module.exports = {
   },
 
   runTask(taskNumber, variant, input) {
-    const taskPath = path.join(__dirname, 'challenges', taskNumber.toString(), `${variant}.js`);
+    const taskPath = path.join(
+      __dirname,
+      'challenges',
+      taskNumber.toString(),
+      `${variant}.js`,
+    );
     if (fs.existsSync(taskPath)) {
       const pipeFns = require(taskPath);
       console.time(variant);
       of(input)
         .pipe(...pipeFns)
-        .subscribe((res) => {
-          console.timeEnd(variant);
-          console.log(`Task ${taskNumber}${variant} result:`, res);
-        });
+        .subscribe(
+          (res) => {
+            console.timeEnd(variant);
+            console.log(`Task ${taskNumber}${variant} result:`, res);
+          },
+          (e) => {
+            console.log(`Task ${taskNumber}${variant} error:`, e);
+          },
+        );
     }
   },
 };
