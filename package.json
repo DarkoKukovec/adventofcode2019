@@ -7,5 +7,8 @@
     "start": "node index"
   },
   "author": "Darko Kukovec",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "rxjs": "^6.5.3"
+  }
 }

@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { of } = require('rxjs');
 
 function isDirectory(source) {
   return fs.lstatSync(source).isDirectory();
@@ -25,11 +26,14 @@ module.exports = {
   runTask(taskNumber, variant, input) {
     const taskPath = path.join(__dirname, 'challenges', taskNumber.toString(), `${variant}.js`);
     if (fs.existsSync(taskPath)) {
-      const task = require(taskPath);
+      const pipeFns = require(taskPath);
       console.time(variant);
-      const res = task(input);
-      console.timeEnd(variant);
-      console.log(`Task ${taskNumber}${variant} result:`, res);
+      of(input)
+        .pipe(...pipeFns)
+        .subscribe((res) => {
+          console.timeEnd(variant);
+          console.log(`Task ${taskNumber}${variant} result:`, res);
+        });
     }
   },
 };
