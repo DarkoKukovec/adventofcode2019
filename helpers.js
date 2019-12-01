@@ -1,14 +1,12 @@
 const fs = require('fs');
 const path = require('path');
 
-
 function isDirectory(source) {
   return fs.lstatSync(source).isDirectory();
 }
 
 function getDirectories(source) {
-  return fs.readdirSync(source)
-    .filter((name) => isDirectory(path.join(source, name)));
+  return fs.readdirSync(source).filter((name) => isDirectory(path.join(source, name)));
 }
 
 module.exports = {
@@ -33,5 +31,5 @@ module.exports = {
       console.timeEnd(variant);
       console.log(`Task ${taskNumber}${variant} result:`, res);
     }
-  }
+  },
 };

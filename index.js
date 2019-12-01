@@ -1,4 +1,4 @@
-const {getLatestTask, loadData, runTask} = require('./helpers');
+const { getLatestTask, loadData, runTask } = require('./helpers');
 
 const task = process.argv[2] || getLatestTask();
 const input = loadData(task);
