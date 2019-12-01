@@ -1,16 +1,23 @@
-const { map } = require('rxjs/operators');
+const { of } = require('rxjs');
+const {
+  catchError,
+  expand,
+  filter,
+  skip,
+  switchMap,
+  throwError,
+} = require('rxjs/operators');
 const { parse, sum } = require('../../operators');
 
 module.exports = [
-  parse(),
-  map((val) => {
-    let mass = val,
-      sum = 0;
-    do {
-      mass = Math.floor(mass / 3) - 2;
-      sum += Math.max(0, mass);
-    } while (mass > 0);
-    return sum;
+  parse('\n', true),
+  switchMap((data) => {
+    return of(data).pipe(
+      expand((val) => (val < 1 ? throwError() : of(Math.floor(val / 3) - 2))),
+      catchError(() => of(0)),
+      filter((x) => x > 0),
+      skip(1),
+    );
   }),
   sum(),
 ];
