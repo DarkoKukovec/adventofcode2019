@@ -1,6 +1,6 @@
 const { of, range } = require('rxjs');
 const { filter, map, reduce, switchMap, toArray } = require('rxjs/operators');
-const { parse, program } = require('../../operators');
+const { parse, program, programOutput } = require('../../operators');
 
 module.exports = [
   parse(','),
@@ -24,7 +24,7 @@ module.exports = [
               input2$.pipe(
                 map((input2) => [0, code, [input1, input2]]),
                 program(),
-                map(([_result, _noun, _verb, output]) => output.pop()),
+                programOutput(),
               ),
             of(0),
           ),

@@ -1,11 +1,13 @@
-const { of } = require('rxjs');
+const { of, throwError } = require('rxjs');
 const {
+  catchError,
   expand,
   map,
   reduce,
   switchMap,
   takeLast,
   takeWhile,
+  tap,
 } = require('rxjs/operators');
 
 function getValue(program, mode, value) {
@@ -27,18 +29,25 @@ module.exports = {
         module.exports.program(noun, verb),
       ),
     ),
-  program: (noun, verb) =>
+  program: (...params) =>
     switchMap(([position, val, inputs]) =>
-      of([position, val]).pipe(
-        map(([position, val]) => [
-          position,
-          val,
-          val.slice(position, position + 4),
-          inputs.slice(),
-          [], // outputs
-        ]),
+      of([
+        'continue',
+        position,
+        val,
+        val.slice(position, position + 4),
+        inputs.slice(),
+        [], // outputs
+      ]).pipe(
         expand(
-          ([position, programOrig, [cmdCode, a, b, x], inputs, outputs]) => {
+          ([
+            _step,
+            position,
+            programOrig,
+            [cmdCode, a, b, x],
+            inputs,
+            outputs,
+          ]) => {
             const program = programOrig.slice();
             const [c2 = 0, c1 = 0, mA = 0, mB = 0, mC = 0] = cmdCode
               .toString()
@@ -47,7 +56,9 @@ module.exports = {
             const cmd = parseInt(`${c1}${c2}`, 10);
             let newPosition = position;
             if (cmd === 99) {
-              return of([program[0], noun, verb, outputs]);
+              return throwError([
+                ['end', program[0], ...[params[0], params[1]], outputs],
+              ]);
             } else if (cmd === 1) {
               const data = getValue(program, mA, a) + getValue(program, mB, b);
               mC === '1' ? outputs.push(data) : (program[x] = data);
@@ -57,6 +68,11 @@ module.exports = {
               mC === '1' ? outputs.push(data) : (program[x] = data);
               newPosition += 4;
             } else if (cmd === 3) {
+              if (!inputs.length) {
+                return throwError([
+                  ['pause', position, programOrig, inputs, outputs],
+                ]);
+              }
               const data = inputs.shift();
               mA === '1' ? outputs.push(data) : (program[a] = data);
               newPosition += 2;
@@ -84,6 +100,7 @@ module.exports = {
               newPosition += 4;
             }
             return of([
+              'continue',
               newPosition,
               program,
               program.slice(newPosition, newPosition + 4),
@@ -92,8 +109,10 @@ module.exports = {
             ]);
           },
         ),
-        takeWhile(([_position, program]) => program instanceof Array, true),
+        catchError((data) => data),
         takeLast(1),
+        map((data) => data.slice(1)),
       ),
     ),
+  programOutput: () => map(([_result, _noun, _verb, output]) => output.pop()),
 };
