@@ -4,7 +4,7 @@ const { parse, programWithVerbs } = require('../../operators');
 module.exports = [
   parse(','),
   toArray(),
-  map((val) => [val, 12, 2]),
+  map((val) => ({ program: val, params: [12, 2] })),
   programWithVerbs(),
-  map(([result]) => result),
+  map(({ program }) => program[0]),
 ];

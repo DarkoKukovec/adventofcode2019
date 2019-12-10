@@ -22,7 +22,7 @@ module.exports = [
           reduce(
             (input2$, input1) =>
               input2$.pipe(
-                map((input2) => [0, code, [input1, input2]]),
+                map((input2) => ({ program: code, input: [input1, input2] })),
                 program(),
                 programOutput(),
               ),

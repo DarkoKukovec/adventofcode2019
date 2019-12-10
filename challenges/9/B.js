@@ -4,7 +4,7 @@ const { parse, program, programOutput } = require('../../operators');
 module.exports = [
   parse(','),
   toArray(),
-  map((val) => [0, val, [2]]),
+  map((program) => ({ program, input: [2] })),
   program(),
   programOutput(),
 ];

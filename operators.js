@@ -1,13 +1,5 @@
 const { of } = require('rxjs');
-const {
-  expand,
-  map,
-  reduce,
-  switchMap,
-  takeLast,
-  takeWhile,
-  tap,
-} = require('rxjs/operators');
+const { map, reduce, switchMap } = require('rxjs/operators');
 
 function getValue(program, mode, value, relativeBase) {
   if (mode === '2') {
@@ -26,6 +18,75 @@ function setValue(program, mode, value, data, relativeBase, output) {
   }
 }
 
+function interpreter(params) {
+  return ({
+    program: prog,
+    input: inp,
+    position: pos,
+    relativeBase: relative,
+  }) => {
+    let position = pos || 0;
+    let program = prog.slice();
+    let input = (inp || []).slice();
+    let relativeBase = relative || 0;
+    const output = [];
+
+    while (program[position] !== 99) {
+      const [cmdCode, a, b, x] = program.slice(position, position + 4);
+      const [c2 = 0, c1 = 0, mA = 0, mB = 0, mC = 0] = cmdCode
+        .toString()
+        .split('')
+        .reverse();
+      const cmd = parseInt(`${c1}${c2}`, 10);
+      const aVal = getValue(program, mA, a, relativeBase);
+      const bVal = getValue(program, mB, b, relativeBase);
+
+      if (cmd === 1) {
+        setValue(program, mC, x, aVal + bVal, relativeBase, output);
+        position += 4;
+      } else if (cmd === 2) {
+        setValue(program, mC, x, aVal * bVal, relativeBase, output);
+        position += 4;
+      } else if (cmd === 3) {
+        if (!input.length) {
+          return {
+            type: 'pause',
+            output,
+            program,
+            position,
+            relativeBase,
+          };
+        }
+        setValue(program, mA, a, input.shift(), relativeBase, output);
+        position += 2;
+      } else if (cmd === 4) {
+        output.push(aVal);
+        position += 2;
+      } else if (cmd === 5) {
+        position = aVal ? bVal : position + 3;
+      } else if (cmd === 6) {
+        position = aVal ? position + 3 : bVal;
+      } else if (cmd === 7) {
+        setValue(program, mC, x, aVal < bVal ? 1 : 0, relativeBase, output);
+        position += 4;
+      } else if (cmd === 8) {
+        setValue(program, mC, x, aVal === bVal ? 1 : 0, relativeBase, output);
+        position += 4;
+      } else if (cmd === 9) {
+        relativeBase += aVal;
+        position += 2;
+      }
+    }
+
+    return {
+      type: 'end',
+      output,
+      params,
+      program,
+    };
+  };
+}
+
 module.exports = {
   parse: (separator = '\n', parseNumber = true) =>
     switchMap((data) =>
@@ -35,118 +96,17 @@ module.exports = {
     ),
   sum: () => reduce((agg, curr) => agg + curr),
   programWithVerbs: () =>
-    switchMap(([val, noun, verb]) =>
-      of([val, noun, verb]).pipe(
-        map(([val, noun, verb]) => [0, [val[0], noun, verb, ...val.slice(3)]]),
-        module.exports.program(noun, verb),
-      ),
+    switchMap(({ params, ...opts }) =>
+      of({
+        ...opts,
+        program: [
+          opts.program[0],
+          ...params,
+          ...opts.program.slice(params.length + 1),
+        ],
+      }).pipe(map(interpreter(params))),
     ),
-  program: (noun, verb) =>
-    switchMap(([position, val, inputs]) =>
-      of([position, val]).pipe(
-        map(([position, val]) => [
-          position,
-          val,
-          val.slice(position, position + 4),
-          inputs.slice(),
-          [], // outputs
-          0,
-        ]),
-        expand(
-          ([
-            position,
-            programOrig,
-            [cmdCode, a, b, x],
-            inputs,
-            outputs,
-            relativeBase,
-          ]) => {
-            console.log('cmd', cmdCode);
-            const program = programOrig.slice();
-            const [c2 = 0, c1 = 0, mA = 0, mB = 0, mC = 0] = cmdCode
-              .toString()
-              .split('')
-              .reverse();
-            const cmd = parseInt(`${c1}${c2}`, 10);
-            let newPosition = position;
-            console.log('cmdd', cmd);
-            if (cmd === 99) {
-              return of([program[0], noun, verb, outputs]);
-            } else if (cmd === 1) {
-              const data =
-                getValue(program, mA, a, relativeBase) +
-                getValue(program, mB, b, relativeBase);
-              setValue(program, mC, x, data, relativeBase, outputs);
-              newPosition += 4;
-            } else if (cmd === 2) {
-              const data =
-                getValue(program, mA, a, relativeBase) *
-                getValue(program, mB, b, relativeBase);
-              setValue(program, mC, x, data, relativeBase, outputs);
-              newPosition += 4;
-            } else if (cmd === 3) {
-              const data = inputs.shift();
-              setValue(program, mA, a, data, relativeBase, outputs);
-              newPosition += 2;
-            } else if (cmd === 4) {
-              const data = getValue(program, mA, a, relativeBase);
-              outputs.push(data);
-              newPosition += 2;
-            } else if (cmd === 5) {
-              newPosition = getValue(program, mA, a, relativeBase)
-                ? getValue(program, mB, b, relativeBase)
-                : newPosition + 3;
-            } else if (cmd === 6) {
-              // console.log('6');
-              newPosition = getValue(program, mA, a, relativeBase)
-                ? newPosition + 3
-                : getValue(program, mB, b, relativeBase);
-            } else if (cmd === 7) {
-              // console.log('7');
-              const data =
-                getValue(program, mA, a, relativeBase) <
-                getValue(program, mB, b, relativeBase)
-                  ? 1
-                  : 0;
-              setValue(program, mC, x, data, relativeBase, outputs);
-              newPosition += 4;
-            } else if (cmd === 8) {
-              const data =
-                getValue(program, mA, a, relativeBase) ===
-                getValue(program, mB, b, relativeBase)
-                  ? 1
-                  : 0;
-              setValue(program, mC, x, data, relativeBase, outputs);
-              newPosition += 4;
-            } else if (cmd === 9) {
-              relativeBase += getValue(program, mA, a, relativeBase);
-              newPosition += 2;
-              // console.log('base', relativeBase, newPosition);
-            }
-            console.log(
-              'step',
-              position,
-              newPosition,
-              cmdCode,
-              outputs,
-              relativeBase,
-              program.length,
-              program.slice(newPosition, newPosition + 4),
-            );
-            return of([
-              newPosition,
-              program,
-              program.slice(newPosition, newPosition + 4),
-              inputs.slice(),
-              outputs.slice(),
-              relativeBase,
-            ]);
-          },
-        ),
-        // tap(([_position, program]) => program instanceof Array),
-        takeWhile(([_position, program]) => program instanceof Array, true),
-        takeLast(1),
-      ),
-    ),
-  programOutput: () => map(([_result, _noun, _verb, output]) => output.pop()),
+  program: (params) => map(interpreter(params)),
+  programOutput: () => map(({ output }) => output.pop()),
+  interpreter,
 };

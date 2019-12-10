@@ -16,12 +16,11 @@ module.exports = [
         toArray(),
       ),
     ).pipe(
-      map(([a, b]) => a.map((x, i) => [val, x, b[i]])),
+      map(([a, b]) => a.map((x, i) => ({ program: val, params: [x, b[i]] }))),
       switchMap((val) => of(...val)),
     ),
   ),
   programWithVerbs(),
-  filter((val) => val.length === 3, true),
-  find(([val]) => val === 19690720),
-  map(([_, noun, verb]) => 100 * noun + verb),
+  find(({ program }) => program[0] === 19690720),
+  map(({ params }) => 100 * params[0] + params[1]),
 ];
