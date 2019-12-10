@@ -8,3 +8,5 @@
 6. [Day 6: Universal Orbit Map](6/README.md)
 7. [Day 7: Amplification Circuit](7/README.md)
 8. [Day 8: Space Image Format](8/README.md)
+9. Day 9: Sensor Boost
+10. Day 10: Monitoring Station
